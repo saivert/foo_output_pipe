@@ -2,13 +2,15 @@
 #include "ConIo.h"
 
 
-CConIo::CConIo(LPWSTR child) : isRunning(false)
+CConIo::CConIo(LPWSTR child) : isRunning(true), child_input_write(NULL), child_input_read(NULL), buffer_len(0)
 {
 	lstrcpy(cmdline, child);
+
 }
 
 void CConIo::threadProc(void)
 {
+
 	// Set the security attributes for the pipe handles created 
 	security_attributes.nLength = sizeof(SECURITY_ATTRIBUTES);
 	security_attributes.bInheritHandle = TRUE;
@@ -29,20 +31,22 @@ void CConIo::threadProc(void)
 #endif
 	CreateProcess(NULL, cmdline, NULL, NULL, TRUE, 0, NULL, NULL, &startup_info, &process_info);
 	CloseHandle(child_input_read);
-	isRunning = true;
+
+	DWORD bytes_written;
 	while (isRunning) {
-		__noop;
+		if (buffer_len) {
+			isRunning=WriteFile(child_input_write, buffer, buffer_len, &bytes_written, NULL);
+			buffer_len = 0;
+		}
 	}
-	CloseHandle(child_input_write);
-	WaitForSingleObject(process_info.hProcess, INFINITE);
+
 }
 
-bool CConIo::Write(void* data, DWORD len, LPDWORD bytes_written)
+void CConIo::Write(void* data, DWORD len)
 {
-	if (isRunning) {
-		return WriteFile(child_input_write, data, len, bytes_written, NULL) > 0;
-	}
-	return true;
+	if (buffer_len) Sleep(20);
+	memcpy_s(buffer, sizeof(buffer), data, len);
+	buffer_len = len;
 }
 
 bool CConIo::Read(void* data, DWORD len, LPDWORD bytes_read)
@@ -54,6 +58,10 @@ bool CConIo::Read(void* data, DWORD len, LPDWORD bytes_read)
 CConIo::~CConIo()
 {
 	isRunning = false;
+	if (child_input_write) CloseHandle(child_input_write);
+	if (process_info.hProcess) WaitForSingleObject(process_info.hProcess, 5000);
+	TerminateProcess(process_info.hProcess, 1);
+
 
 	waitTillDone();
 }

@@ -10,13 +10,15 @@ private:
 	PROCESS_INFORMATION process_info;
 	STARTUPINFO startup_info;
 	SECURITY_ATTRIBUTES security_attributes;
-	BYTE buffer[4096];
-	bool isRunning;
+	BYTE buffer[8096];
+	volatile DWORD buffer_len;
+	volatile bool isRunning;
 
 public:
 	CConIo(LPWSTR child);
 	void threadProc(void);
-	bool Write(void* data, DWORD len, LPDWORD bytes_written);
+	void Write(void* data, DWORD len);
+	bool GetRunning() { return isRunning; }
 	bool Read(void* data, DWORD len, LPDWORD bytes_read);
 	~CConIo();
 };

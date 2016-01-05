@@ -1,5 +1,6 @@
 #include "stdafx.h"
 //#include "wavefile.h"
+#include "../../SDK/component.h"
 #include "ConIo.h"
 #define COMPONENT_NAME "foo_output_pipe"
 
@@ -28,6 +29,8 @@ static initquit_factory_t<myinitquit> g_myinitquit_factory;
 int g_iswriting=0;
 CConIo * g_conio;
 
+extern advconfig_string_factory cfg_cmdline;
+
 class mycapturestream : public playback_stream_capture_callback, public service_base {
 private:
 	int count;
@@ -35,32 +38,40 @@ public:
 	
 	void on_chunk(const audio_chunk &d) {
 		//if (d.get_used_size() == 0) return;
+#ifdef _DEBUG
 		console::printf(COMPONENT_NAME " got chunk #%d: samplecount=%d used size=%d", ++count, d.get_sample_count(), d.get_used_size() );
+#endif
 		//WAVEFORMATEX wfx;
 		mem_block_container_impl_t<> out;
 		DWORD written;
 
 		out.set_size(d.get_used_size());
-		
+
 		d.toFixedPoint(out, 16, 16);
 		if (!g_iswriting) {
 			g_iswriting = 1;
-			pfc::string_formatter s;
+			pfc::string8 s, b;
 			WCHAR buf[256];
-			s << "D:\\ffmpeg32\\bin\\ffmpeg.exe -f s16le -ar " << d.get_sample_rate() << " -ac " << d.get_channels() << " -i - -y d:\\out.mp3";
-			//DeleteFile(L"d:\\out.mp3");
-			//s << "D:\\lame\\lame.exe -r  - d:\\out.mp3";
-			console::printf(COMPONENT_NAME " %s", s.toString());
+			cfg_cmdline.get(s);
+			
+			s.replace_string("%samplerate%",  pfc::format_int(d.get_sample_rate()));
+			s.replace_string("%channels%", pfc::format_int(d.get_channels()));
+
+			console::printf(COMPONENT_NAME " Executing: %s", s.toString());
 			pfc::stringcvt::convert_utf8_to_wide(buf, sizeof(buf), s.toString(), s.get_length());
 			g_conio = new CConIo(buf);
 			g_conio->start();
 		}
-		if (g_conio->Write(out.get_ptr(), out.get_size(), &written)) {
-			console::printf(COMPONENT_NAME " written %d bytes to file", written);
-		}
-		else {
+		g_conio->Write(out.get_ptr(), out.get_size());
+
+		if (!g_conio->GetRunning()) {
 			console::printf(COMPONENT_NAME "Unable to write to pipe");
+			g_iswriting = false;
+			delete g_conio;
+			static_api_ptr_t<playback_stream_capture> api;
+			api->remove_callback(this);
 		}
+
 #if 0
 		if (!g_iswriting) {
 			g_iswriting = 1;
@@ -98,8 +109,10 @@ public:
 			api->add_callback(&g_mycapturestream);
 		} else {
 			//wf.Close();
-			g_iswriting = 0;
-			delete g_conio;
+			if (g_iswriting) {
+				g_iswriting = 0;
+				delete g_conio;
+			}
 			api->remove_callback(&g_mycapturestream);
 		}
 	}
