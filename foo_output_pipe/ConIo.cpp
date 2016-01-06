@@ -1,11 +1,13 @@
 #include "stdafx.h"
 #include "ConIo.h"
-
-
-CConIo::CConIo(LPWSTR child) : isRunning(true), child_input_write(NULL), child_input_read(NULL), buffer_len(0)
+#include <iterator>
+#include <vector>
+#include <iostream>
+#include <fstream>
+CConIo::CConIo(LPWSTR child) : isRunning(true), child_input_write(NULL), child_input_read(NULL)
 {
 	lstrcpy(cmdline, child);
-
+	
 }
 
 void CConIo::threadProc(void)
@@ -34,9 +36,11 @@ void CConIo::threadProc(void)
 
 	DWORD bytes_written;
 	while (isRunning) {
-		if (buffer_len) {
-			isRunning=WriteFile(child_input_write, buffer, buffer_len, &bytes_written, NULL);
-			buffer_len = 0;
+		while (m_queue.size()) {
+			std::vector<char> v;
+			v = m_queue.front();
+			isRunning = WriteFile(child_input_write, v.data(), v.size(), &bytes_written, NULL)>0;
+			m_queue.pop();
 		}
 	}
 
@@ -44,9 +48,10 @@ void CConIo::threadProc(void)
 
 void CConIo::Write(void* data, DWORD len)
 {
-	if (buffer_len) Sleep(20);
-	memcpy_s(buffer, sizeof(buffer), data, len);
-	buffer_len = len;
+	std::vector<char> v;
+	v.resize(len);
+	memcpy(&v[0], data, len);
+	m_queue.push(v);
 }
 
 bool CConIo::Read(void* data, DWORD len, LPDWORD bytes_read)

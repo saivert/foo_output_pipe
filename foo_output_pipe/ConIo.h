@@ -1,4 +1,7 @@
 #pragma once
+#include <stdlib.h>
+#include <queue>
+
 class CConIo : public pfc::thread
 {
 private:
@@ -10,9 +13,8 @@ private:
 	PROCESS_INFORMATION process_info;
 	STARTUPINFO startup_info;
 	SECURITY_ATTRIBUTES security_attributes;
-	BYTE buffer[8096];
-	volatile DWORD buffer_len;
 	volatile bool isRunning;
+	std::queue< std::vector<char> > m_queue;
 
 public:
 	CConIo(LPWSTR child);

@@ -43,7 +43,6 @@ public:
 #endif
 		//WAVEFORMATEX wfx;
 		mem_block_container_impl_t<> out;
-		DWORD written;
 
 		out.set_size(d.get_used_size());
 
