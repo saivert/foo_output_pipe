@@ -113,47 +113,42 @@ typedef struct
 	uint16_t bits_per_sample;
 } WaveHeader;
 
-WaveHeader *genericWAVHeader(uint32_t sample_rate, uint16_t bit_depth, uint16_t channels)
+void init_genericWAVHeader(WaveHeader &hdr, uint32_t sample_rate, uint16_t bit_depth, uint16_t channels)
 {
-    WaveHeader *hdr;
-    hdr = new WaveHeader;
-    if (!hdr) return NULL;
-
-    memcpy(&hdr->RIFF_marker, "RIFF", 4);
-    memcpy(&hdr->filetype_header, "WAVE", 4);
-    memcpy(&hdr->format_marker, "fmt ", 4);
-    hdr->data_header_length = 16;
-    hdr->format_type = 1;
-    hdr->number_of_channels = channels;
-    hdr->sample_rate = sample_rate;
-    hdr->bytes_per_second = sample_rate * channels * bit_depth / 8;
-    hdr->bytes_per_frame = channels * bit_depth / 8;
-    hdr->bits_per_sample = bit_depth;
-
-    return hdr;
+    memcpy(&hdr.RIFF_marker, "RIFF", 4);
+    memcpy(&hdr.filetype_header, "WAVE", 4);
+    memcpy(&hdr.format_marker, "fmt ", 4);
+    hdr.data_header_length = 16;
+    hdr.format_type = 1;
+    hdr.number_of_channels = channels;
+    hdr.sample_rate = sample_rate;
+    hdr.bytes_per_second = sample_rate * channels * bit_depth / 8;
+    hdr.bytes_per_frame = channels * bit_depth / 8;
+    hdr.bits_per_sample = bit_depth;
 }
 
 void CConIo::_WriteWavHeader()
 {
 	std::ofstream &f = *file_stream;
 
-	WaveHeader *hdr = genericWAVHeader(samplerate, 16, channels);
-	hdr->file_size = UINT_MAX;
+	WaveHeader hdr;
+	init_genericWAVHeader(hdr, samplerate, 16, channels);
+	hdr.file_size = UINT_MAX;
 
-	f.write(hdr->RIFF_marker, 4);
-	write_word(f, hdr->file_size, 4);
-	f.write(hdr->filetype_header, 4);
-	f.write(hdr->format_marker, 4);
-	write_word(f, hdr->data_header_length, 4);
-	write_word(f, hdr->format_type, 2);
-	write_word(f, hdr->number_of_channels, 2);
-	write_word(f, hdr->sample_rate, 4);
-	write_word(f, hdr->bytes_per_second, 4);
-	write_word(f, hdr->bytes_per_frame, 2);
-	write_word(f, hdr->bits_per_sample, 2);
+	f.write(hdr.RIFF_marker, 4);
+	write_word(f, hdr.file_size, 4);
+	f.write(hdr.filetype_header, 4);
+	f.write(hdr.format_marker, 4);
+	write_word(f, hdr.data_header_length, 4);
+	write_word(f, hdr.format_type, 2);
+	write_word(f, hdr.number_of_channels, 2);
+	write_word(f, hdr.sample_rate, 4);
+	write_word(f, hdr.bytes_per_second, 4);
+	write_word(f, hdr.bytes_per_frame, 2);
+	write_word(f, hdr.bits_per_sample, 2);
 	f << "data";
 
-	uint32_t data_size = hdr->file_size - 36;
+	uint32_t data_size = hdr.file_size - 36;
 	write_word(f, data_size, 4);
 
 	f.flush();
