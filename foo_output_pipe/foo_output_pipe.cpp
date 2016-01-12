@@ -25,7 +25,6 @@ public:
 
 static initquit_factory_t<myinitquit> g_myinitquit_factory;
 
-//CWaveFile wf;
 int g_iswriting=0;
 CConIo * g_conio;
 
@@ -41,7 +40,6 @@ public:
 #ifdef _DEBUG
 		console::printf(COMPONENT_NAME " got chunk #%d: samplecount=%d used size=%d", ++count, d.get_sample_count(), d.get_used_size() );
 #endif
-		//WAVEFORMATEX wfx;
 		mem_block_container_impl_t<> out;
 
 		out.set_size(d.get_used_size());
@@ -58,33 +56,18 @@ public:
 
 			console::printf(COMPONENT_NAME " Executing: %s", s.toString());
 			pfc::stringcvt::convert_utf8_to_wide(buf, sizeof(buf), s.toString(), s.get_length());
-			g_conio = new CConIo(buf);
-			g_conio->start();
+			g_conio = new CConIo(buf, d.get_sample_rate(), d.get_channels());
+			g_conio->startWithPriority(THREAD_PRIORITY_ABOVE_NORMAL);
 		}
 		g_conio->Write(out.get_ptr(), out.get_size());
 
 		if (!g_conio->GetRunning()) {
-			console::printf(COMPONENT_NAME "Unable to write to pipe");
+			console::printf(COMPONENT_NAME "Write aborted. Shutting down.");
 			g_iswriting = false;
 			delete g_conio;
 			static_api_ptr_t<playback_stream_capture> api;
 			api->remove_callback(this);
 		}
-
-#if 0
-		if (!g_iswriting) {
-			g_iswriting = 1;
-			wfx.cbSize = sizeof(wfx);
-			wfx.nChannels = d.get_channels();
-			wfx.nSamplesPerSec = d.get_sample_rate();
-			wfx.wBitsPerSample = 16;
-			wfx.wFormatTag = WAVE_FORMAT_PCM;
-			wfx.nBlockAlign = (16 * 2) / 8;
-			wfx.nAvgBytesPerSec = wfx.nBlockAlign*wfx.nSamplesPerSec;
-			wf.Open(L"D:\\out.wav", &wfx, NULL);
-		}
-		wf.Write(out.get_size(), (BYTE*)out.get_ptr(), &written);
-#endif
 	}
 };
 
