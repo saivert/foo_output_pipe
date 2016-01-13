@@ -42,7 +42,7 @@ void CConIo::threadProc(void)
 #ifdef _DEBUG
 	startup_info.wShowWindow = SW_SHOWDEFAULT;
 #else
-	startup_info.wShowWindow = SW_HIDE;
+	startup_info.wShowWindow = showconsole ? SW_SHOWDEFAULT : SW_HIDE;
 #endif
 	CreateProcess(NULL, cmdline, NULL, NULL, TRUE, 0, NULL, NULL, &startup_info, &process_info);
 	CloseHandle(child_input_read);

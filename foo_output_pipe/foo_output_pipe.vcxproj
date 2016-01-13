@@ -65,10 +65,10 @@
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy /b "$(TargetPath)" "$(SolutionDir)\test\components\</Command>
+      <Command>copy /b "$(TargetPath)" "$(SolutionDir)..\portablefb2k\components\</Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy component to test installation directory</Message>
+      <Message>Copy component to portable foobar2000 component directory</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -89,13 +89,10 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>copy /b "$(TargetPath)" "$(SolutionDir)\test\components\</Command>
-      <Message>Copy component to test installation directory</Message>
+      <Command>copy /b "$(TargetPath)" "$(SolutionDir)..\portablefb2k\components\</Command>
+      <Message>Copy component to portable foobar2000 component directory</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <Text Include="readme.md" />
-  </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConIo.h" />
     <ClInclude Include="resource.h" />

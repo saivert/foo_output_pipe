@@ -1,5 +1,4 @@
 #include "stdafx.h"
-//#include "wavefile.h"
 #include "../../SDK/component.h"
 #include "ConIo.h"
 #define COMPONENT_NAME "foo_output_pipe"
@@ -29,6 +28,7 @@ int g_iswriting=0;
 CConIo * g_conio;
 
 extern advconfig_string_factory cfg_cmdline;
+extern advconfig_checkbox_factory cfg_showconsolewindow;
 
 class mycapturestream : public playback_stream_capture_callback, public service_base {
 private:
@@ -36,7 +36,6 @@ private:
 public:
 	
 	void on_chunk(const audio_chunk &d) {
-		//if (d.get_used_size() == 0) return;
 #ifdef _DEBUG
 		console::printf(COMPONENT_NAME " got chunk #%d: samplecount=%d used size=%d", ++count, d.get_sample_count(), d.get_used_size() );
 #endif
@@ -48,7 +47,7 @@ public:
 		if (!g_iswriting) {
 			g_iswriting = 1;
 			pfc::string8 s, b;
-			WCHAR buf[256];
+			WCHAR buf[MAX_PATH];
 			cfg_cmdline.get(s);
 			
 			s.replace_string("%samplerate%",  pfc::format_int(d.get_sample_rate()));
@@ -57,6 +56,7 @@ public:
 			console::printf(COMPONENT_NAME " Executing: %s", s.toString());
 			pfc::stringcvt::convert_utf8_to_wide(buf, sizeof(buf), s.toString(), s.get_length());
 			g_conio = new CConIo(buf, d.get_sample_rate(), d.get_channels());
+			g_conio->showconsole = cfg_showconsolewindow.get();
 			g_conio->startWithPriority(THREAD_PRIORITY_ABOVE_NORMAL);
 		}
 		g_conio->Write(out.get_ptr(), out.get_size());
@@ -90,7 +90,6 @@ public:
 		if (!p_state) {
 			api->add_callback(&g_mycapturestream);
 		} else {
-			//wf.Close();
 			if (g_iswriting) {
 				g_iswriting = 0;
 				delete g_conio;

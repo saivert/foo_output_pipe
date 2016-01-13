@@ -24,6 +24,7 @@ public:
 	void threadProc(void);
 	void Write(void* data, DWORD len);
 	bool GetRunning() { return isRunning; }
+	bool showconsole;
 	~CConIo();
 };
 
