@@ -11,21 +11,7 @@ COMPONENT_NAME,
 
 VALIDATE_COMPONENT_FILENAME("foo_output_pipe.dll");
 
-class myinitquit : public initquit {
-public:
-	void on_init() {
-		console::print(COMPONENT_NAME " component: on_init()");
-		
-	}
-	void on_quit() {
-		console::print(COMPONENT_NAME " component: on_quit()");
-	}
-};
-
-static initquit_factory_t<myinitquit> g_myinitquit_factory;
-
-int g_iswriting=0;
-CConIo * g_conio;
+CConIo * g_conio=nullptr;
 
 extern advconfig_string_factory cfg_cmdline;
 extern advconfig_checkbox_factory cfg_showconsolewindow;
@@ -45,8 +31,7 @@ public:
 		out.set_size(d.get_used_size());
 
 		d.toFixedPoint(out, 16, 16);
-		if (!g_iswriting) {
-			g_iswriting = 1;
+		if (!g_conio) {
 			pfc::string8 s, b;
 			WCHAR buf[MAX_PATH];
 			cfg_cmdline.get(s);
@@ -58,16 +43,18 @@ public:
 			pfc::stringcvt::convert_utf8_to_wide(buf, sizeof(buf), s.toString(), s.get_length());
 			g_conio = new CConIo(buf, d.get_sample_rate(), d.get_channels());
 			g_conio->showconsole = cfg_showconsolewindow.get();
-			g_conio->startWithPriority(THREAD_PRIORITY_ABOVE_NORMAL);
+			g_conio->start();
 		}
-		g_conio->Write(out.get_ptr(), out.get_size());
+		else {
+			g_conio->Write(out.get_ptr(), out.get_size());
 
-		if (!g_conio->GetRunning()) {
-			console::printf(COMPONENT_NAME "Write aborted. Shutting down.");
-			g_iswriting = false;
-			delete g_conio;
-			static_api_ptr_t<playback_stream_capture> api;
-			api->remove_callback(this);
+			if (!g_conio->GetRunning()) {
+				console::printf(COMPONENT_NAME "Write aborted. Shutting down.");
+				delete g_conio;
+				g_conio = nullptr;
+				static_api_ptr_t<playback_stream_capture> api;
+				api->remove_callback(this);
+			}
 		}
 	}
 };
@@ -91,9 +78,9 @@ public:
 		if (!p_state) {
 			api->add_callback(&g_mycapturestream);
 		} else {
-			if (g_iswriting) {
-				g_iswriting = 0;
+			if (g_conio) {
 				delete g_conio;
+				g_conio = nullptr;
 			}
 			api->remove_callback(&g_mycapturestream);
 		}

@@ -62,7 +62,7 @@ void CConIo::threadProc(void)
 	_WriteWavHeader();
 
 	while (isRunning) {
-		while (m_queue.size()) {
+		if (m_queue.size()) {
 			std::vector<char> v;
 			v = m_queue.front();
 			// Check if file stream is still open and that our child process is still running.
@@ -73,6 +73,7 @@ void CConIo::threadProc(void)
 			file_stream->flush();
 			m_queue.pop();
 		}
+		else WaitForSingleObject(winThreadHandle(), 100);
 	}
 
 }
