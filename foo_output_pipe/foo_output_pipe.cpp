@@ -29,6 +29,7 @@ CConIo * g_conio;
 
 extern advconfig_string_factory cfg_cmdline;
 extern advconfig_checkbox_factory cfg_showconsolewindow;
+extern advconfig_checkbox_factory cfg_enable;
 
 class mycapturestream : public playback_stream_capture_callback, public service_base {
 private:
@@ -86,7 +87,7 @@ public:
 
 	virtual void on_playback_pause(bool p_state){
 		static_api_ptr_t<playback_stream_capture> api;
-		console::print(COMPONENT_NAME " on_playback_pause");
+		if (!cfg_enable) return;
 		if (!p_state) {
 			api->add_callback(&g_mycapturestream);
 		} else {
