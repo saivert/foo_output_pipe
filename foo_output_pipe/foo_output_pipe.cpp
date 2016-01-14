@@ -17,8 +17,6 @@ extern cfg_int cfg_enable;
 extern cfg_int cfg_showconsolewindow;
 extern cfg_string cfg_cmdline;
 
-void WIN32_OP_FAIL(){};
-
 class mycapturestream : public playback_stream_capture_callback, public service_base {
 private:
 	int count;
