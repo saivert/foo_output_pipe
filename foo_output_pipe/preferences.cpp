@@ -95,8 +95,8 @@ void CMyPreferences::apply() {
 
 bool CMyPreferences::HasChanged() {
 	//returns whether our dialog content is different from the current configuration (whether the apply button should be enabled or not)
-	return GetDlgItemInt(IDC_ENABLE, NULL, FALSE) != cfg_enable
-		|| GetDlgItemInt(IDC_SHOWCONSOLE, NULL, FALSE) != cfg_showconsolewindow
+	return IsDlgButtonChecked(IDC_ENABLE) != cfg_enable
+		|| IsDlgButtonChecked(IDC_SHOWCONSOLE) != cfg_showconsolewindow
 		|| uGetDlgItemText(m_hWnd, IDC_CMDLINE) != cfg_cmdline;
 }
 void CMyPreferences::OnChanged() {
