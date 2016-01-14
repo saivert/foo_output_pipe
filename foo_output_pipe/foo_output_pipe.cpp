@@ -13,9 +13,11 @@ VALIDATE_COMPONENT_FILENAME("foo_output_pipe.dll");
 
 CConIo * g_conio=nullptr;
 
-extern advconfig_string_factory cfg_cmdline;
-extern advconfig_checkbox_factory cfg_showconsolewindow;
-extern advconfig_checkbox_factory cfg_enable;
+extern cfg_int cfg_enable;
+extern cfg_int cfg_showconsolewindow;
+extern cfg_string cfg_cmdline;
+
+void WIN32_OP_FAIL(){};
 
 class mycapturestream : public playback_stream_capture_callback, public service_base {
 private:
@@ -34,7 +36,7 @@ public:
 		if (!g_conio) {
 			pfc::string8 s, b;
 			WCHAR buf[MAX_PATH];
-			cfg_cmdline.get(s);
+			s = cfg_cmdline;
 			
 			s.replace_string("%samplerate%",  pfc::format_int(d.get_sample_rate()));
 			s.replace_string("%channels%", pfc::format_int(d.get_channels()));
@@ -42,7 +44,7 @@ public:
 			console::printf(COMPONENT_NAME " Executing: %s", s.toString());
 			pfc::stringcvt::convert_utf8_to_wide(buf, sizeof(buf), s.toString(), s.get_length());
 			g_conio = new CConIo(buf, d.get_sample_rate(), d.get_channels());
-			g_conio->showconsole = cfg_showconsolewindow.get();
+			g_conio->showconsole = cfg_showconsolewindow==1;
 			g_conio->start();
 		}
 		else {
