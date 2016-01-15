@@ -18,19 +18,10 @@ extern cfg_int cfg_showconsolewindow;
 extern cfg_string cfg_cmdline;
 
 class mycapturestream : public playback_stream_capture_callback, public service_base {
-private:
-	int count;
 public:
 	
 	void on_chunk(const audio_chunk &d) {
-#ifdef _DEBUG
-		console::printf(COMPONENT_NAME " got chunk #%d: samplecount=%d used size=%d", ++count, d.get_sample_count(), d.get_used_size() );
-#endif
-		mem_block_container_impl_t<> out;
 
-		out.set_size(d.get_used_size());
-
-		d.toFixedPoint(out, 16, 16);
 		if (!g_conio) {
 			pfc::string8 s, b;
 			WCHAR buf[MAX_PATH];
@@ -46,7 +37,7 @@ public:
 			g_conio->start();
 		}
 		else {
-			g_conio->Write(out.get_ptr(), out.get_size());
+			g_conio->Write(d);
 
 			if (!g_conio->GetRunning()) {
 				console::printf(COMPONENT_NAME "Write aborted. Shutting down.");

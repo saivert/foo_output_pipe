@@ -47,6 +47,7 @@ void CConIo::threadProc(void)
 	CreateProcess(NULL, cmdline, NULL, NULL, TRUE, 0, NULL, NULL, &startup_info, &process_info);
 	CloseHandle(child_input_read);
 
+#if 0
 	if (child_input_write != INVALID_HANDLE_VALUE) {
 		int file_descriptor = _open_osfhandle((intptr_t)child_input_write, 0);
 
@@ -58,19 +59,29 @@ void CConIo::threadProc(void)
 			}
 		}
 	}
+#endif
+	
+	file_stream = file_win32_wrapper_t<false, true>::g_create_from_handle(child_input_write);
 
 	_WriteWavHeader();
 
 	while (isRunning) {
 		if (m_queue.size()) {
-			std::vector<char> v;
-			v = m_queue.front();
-			// Check if file stream is still open and that our child process is still running.
-			isRunning = file_stream->is_open() && (WaitForSingleObject(process_info.hProcess, 0) == WAIT_TIMEOUT);
-			if (!isRunning) break;
+			audio_chunk_impl v = m_queue.front();
+			mem_block_container_impl_t<> out;
 
-			file_stream->write(v.data(), v.size());
-			file_stream->flush();
+			out.set_size(v.get_used_size());
+
+			v.toFixedPoint(out, 16, 16);
+			// Check if file stream is still open and that our child process is still running.
+			isRunning = file_stream.get_ptr() && (WaitForSingleObject(process_info.hProcess, 0) == WAIT_TIMEOUT);
+
+			try {
+				file_stream->write((char*)out.get_ptr(), out.get_size(), abrt);
+			}
+			catch (...) {
+				isRunning = false;
+			}
 			m_queue.pop();
 		}
 		else WaitForSingleObject(winThreadHandle(), 100);
@@ -78,20 +89,15 @@ void CConIo::threadProc(void)
 
 }
 
-void CConIo::Write(void* data, DWORD len)
+void CConIo::Write(const audio_chunk &d)
 {
-	std::vector<char> v;
-	v.resize(len);
-	memcpy(&v[0], data, len);
-	m_queue.push(v);
+	m_queue.push(d);
 }
 
 CConIo::~CConIo()
 {
 	isRunning = false;
-	//if (child_input_write) CloseHandle(child_input_write);
-	file_stream->close();
-	delete file_stream;
+	file_stream.release();
 	if (process_info.hProcess) WaitForSingleObject(process_info.hProcess, 5000);
 	TerminateProcess(process_info.hProcess, 1);
 
@@ -117,27 +123,23 @@ void CConIo::_MakeWavHeader(WaveHeader &hdr, uint32_t sample_rate, uint16_t bit_
 
 void CConIo::_WriteWavHeader()
 {
-	std::ofstream &f = *file_stream;
-
 	WaveHeader hdr;
 	_MakeWavHeader(hdr, samplerate, 16, channels);
 	hdr.file_size = UINT_MAX;
 
-	f.write(hdr.RIFF_marker, 4);
-	write_word(f, hdr.file_size, 4);
-	f.write(hdr.filetype_header, 4);
-	f.write(hdr.format_marker, 4);
-	write_word(f, hdr.data_header_length, 4);
-	write_word(f, hdr.format_type, 2);
-	write_word(f, hdr.number_of_channels, 2);
-	write_word(f, hdr.sample_rate, 4);
-	write_word(f, hdr.bytes_per_second, 4);
-	write_word(f, hdr.bytes_per_frame, 2);
-	write_word(f, hdr.bits_per_sample, 2);
-	f << "data";
+	file_stream->write(hdr.RIFF_marker, 4, abrt);
+	file_stream->write_lendian_t<uint32_t>(hdr.file_size, abrt);
+	file_stream->write(hdr.filetype_header, 4, abrt);
+	file_stream->write(hdr.format_marker, 4, abrt);
+	file_stream->write_lendian_t<uint32_t>(hdr.data_header_length, abrt);
+	file_stream->write_lendian_t<uint16_t>(hdr.format_type, abrt);
+	file_stream->write_lendian_t<uint16_t>(hdr.number_of_channels, abrt);
+	file_stream->write_lendian_t<uint32_t>(hdr.sample_rate, abrt);
+	file_stream->write_lendian_t<uint32_t>(hdr.bytes_per_second, abrt);
+	file_stream->write_lendian_t<uint16_t>(hdr.bytes_per_frame, abrt);
+	file_stream->write_lendian_t<uint16_t>(hdr.bits_per_sample, abrt);
+	file_stream->write("data", 4, abrt);
 
 	uint32_t data_size = hdr.file_size - 36;
-	write_word(f, data_size, 4);
-
-	f.flush();
+	file_stream->write_lendian_t<uint32_t>(data_size, abrt);
 }
