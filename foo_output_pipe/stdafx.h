@@ -11,3 +11,5 @@
 #include "../../../pfc/pfc.h"
 #include "../../ATLHelpers/ATLHelpers.h"
 #include "resource.h"
+
+#define COMPONENT_NAME "foo_output_pipe"

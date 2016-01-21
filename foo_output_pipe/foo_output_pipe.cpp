@@ -1,12 +1,16 @@
 #include "stdafx.h"
 #include "../../SDK/component.h"
 #include "ConIo.h"
-#define COMPONENT_NAME "foo_output_pipe"
 
 DECLARE_COMPONENT_VERSION(
 COMPONENT_NAME,
 "0.0.1",
-"pipes audio via a console app"
+"foo_output_pipe\n"
+"\n"
+"pipes audio via a console app\n"
+"Fork me @ https://github.com/saivert/foo_output_pipe\n"
+"\n"
+"Copyright (c) 2016 Nicolai Syvertsen\n"
 );
 
 VALIDATE_COMPONENT_FILENAME("foo_output_pipe.dll");
@@ -32,8 +36,8 @@ public:
 
 			console::printf(COMPONENT_NAME " Executing: %s", s.toString());
 			pfc::stringcvt::convert_utf8_to_wide(buf, sizeof(buf), s.toString(), s.get_length());
-			g_conio = new CConIo(buf, d.get_sample_rate(), d.get_channels());
-			g_conio->showconsole = cfg_showconsolewindow==1;
+			g_conio = new CConIo(buf, d.get_sample_rate(), d.get_channels(), cfg_showconsolewindow == 1);
+
 			g_conio->start();
 		}
 		else {
