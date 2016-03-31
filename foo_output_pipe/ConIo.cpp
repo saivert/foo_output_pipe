@@ -47,6 +47,8 @@ void CConIo::threadProc(void)
 	_WriteWavHeader(file_stream);
 
 	while (isRunning) {
+		isRunning = file_stream.is_valid() && !abrt.is_aborting();
+
 		rwl.enterRead();
 		if (m_queue.size()) {
 			audio_chunk_impl v = m_queue.front();
@@ -56,8 +58,6 @@ void CConIo::threadProc(void)
 			out.set_size(v.get_used_size());
 
 			v.toFixedPoint(out, 16, 16);
-
-			isRunning = file_stream.is_valid() || !abrt.is_aborting();
 
 			try {
 				file_stream->write((char*)out.get_ptr(), out.get_size(), abrt);
