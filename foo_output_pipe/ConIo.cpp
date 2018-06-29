@@ -5,7 +5,7 @@
 #include <vector>
 #include "io.h"
 
-CConIo::CConIo(LPWSTR child, int samplerate, int channels, bool showconsole) : isRunning(true), samplerate(samplerate), channels(channels), showconsole(showconsole)
+CConIo::CConIo(LPWSTR child, int samplerate, int channels, bool showconsole) : isRunning(true), samplerate(samplerate), channels(channels), showconsole(showconsole), curvol(1)
 {
 	lstrcpy(cmdline, child);
 }
@@ -17,7 +17,6 @@ void CConIo::threadProc(void)
 
 	STARTUPINFO startup_info;
 	SECURITY_ATTRIBUTES security_attributes;
-
 	// Set the security attributes for the pipe handles created 
 	security_attributes.nLength = sizeof(SECURITY_ATTRIBUTES);
 	security_attributes.bInheritHandle = TRUE;
@@ -45,6 +44,7 @@ void CConIo::threadProc(void)
 	service_ptr_t<file> file_stream = file_win32_wrapper_t<false, true>::g_create_from_handle(child_input_write);
 
 	_WriteWavHeader(file_stream);
+	mem_block_container_impl out;
 
 	while (isRunning) {
 		isRunning = file_stream.is_valid() && !abrt.is_aborting();
@@ -53,11 +53,10 @@ void CConIo::threadProc(void)
 		if (m_queue.size()) {
 			audio_chunk_impl v = m_queue.front();
 			rwl.leaveRead();
-			mem_block_container_impl_t<> out;
 
 			out.set_size(v.get_used_size());
 
-			v.toFixedPoint(out, 16, 16);
+			v.toFixedPoint(out, 16, 16, true, curvol);
 
 			try {
 				file_stream->write((char*)out.get_ptr(), out.get_size(), abrt);
@@ -83,6 +82,16 @@ void CConIo::threadProc(void)
 	catch (const exception_win32 e) {
 		console::printf(COMPONENT_NAME " Unable to create process: %s", e.what());
 	}
+}
+
+bool CConIo::isReady()
+{
+	return m_queue.size()==0;
+}
+
+void CConIo::Flush()
+{
+	m_queue.empty();
 }
 
 void CConIo::Write(const audio_chunk &d)

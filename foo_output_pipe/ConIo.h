@@ -31,10 +31,16 @@ private:
 	void _MakeWavHeader(WaveHeader &hdr, uint32_t sample_rate, uint16_t bit_depth, uint16_t channels);
 	abort_callback_impl abrt;
 	const bool showconsole;
+	double curvol;
 public:
 	CConIo(LPWSTR child, int samplerate, int channels, bool showconsole);
 	void threadProc(void);
 	void Write(const audio_chunk &d);
+	bool isReady();
+	void Flush();
+	void SetVol(double p_vol) {
+		curvol = p_vol;
+	}
 	bool GetRunning() { return isRunning; }
 	~CConIo();
 };

@@ -99,3 +99,106 @@ public:
 };
 
 static service_factory_single_t<vstream_play_callback_ui>vstream_callback;
+
+// {B9C1343E-FD31-40AD-80FD-E1913D1A126E}
+static const GUID myoutputclass_GUID =
+{ 0xb9c1343e, 0xfd31, 0x40ad,{ 0x80, 0xfd, 0xe1, 0x91, 0x3d, 0x1a, 0x12, 0x6e } };
+#define OUTPUT_NAME "foo_output_pipe"
+
+class myoutputclass : public output {
+private:
+	double buffer_length;
+	t_uint32 bitdepth;
+	double vol;
+public:
+
+	myoutputclass(const GUID & p_device, double p_buffer_length, bool p_dither, t_uint32 p_bitdepth) : buffer_length(p_buffer_length), bitdepth(p_bitdepth) {
+		if (!g_conio) {
+			pfc::string8 s, b;
+			WCHAR buf[MAX_PATH];
+			s = cfg_cmdline;
+
+			//s.replace_string("%samplerate%", pfc::format_int(p_chunk.get_sample_rate()));
+			//s.replace_string("%channels%", pfc::format_int(p_chunk.get_channels()));
+
+			console::printf(COMPONENT_NAME " Executing: %s", s.toString());
+			pfc::stringcvt::convert_utf8_to_wide(buf, sizeof(buf), s.toString(), s.get_length());
+			g_conio = new CConIo(buf, 44100, 2, true);
+
+			g_conio->start();
+		}
+	}
+
+	~myoutputclass() {
+		if (g_conio) {
+			delete g_conio;
+			g_conio = nullptr;
+		}
+	}
+
+	//! Retrieves amount of audio data queued for playback, in seconds.
+	double get_latency() {
+		return 1;
+	}
+	//! Sends new samples to the device. Allowed to be called only when update() indicates that the device is ready.
+	void process_samples(const audio_chunk & p_chunk) {
+		if (g_conio) g_conio->Write(p_chunk);
+	}
+	//! Updates playback; queries whether the device is ready to receive new data.
+	//! @param p_ready On success, receives value indicating whether the device is ready for next process_samples() call.
+	void update(bool & p_ready) {
+		p_ready = g_conio && g_conio->isReady();
+	}
+	//! Pauses/unpauses playback.
+	void pause(bool p_state) {
+		if (p_state) {
+		}
+		else {
+		}
+	}
+	//! Flushes queued audio data. Called after seeking.
+	void flush() {
+		if (g_conio) g_conio->Flush();
+	}
+	//! Forces playback of queued data. Called when there's no more data to send, to prevent infinite waiting if output implementation starts actually playing after amount of data in internal buffer reaches some level.
+	void force_play() {
+	}
+
+	//! Sets playback volume.
+	//! @p_val Volume level in dB. Value of 0 indicates full ("100%") volume, negative values indciate different attenuation levels.
+	void volume_set(double p_val) {
+		if (g_conio) g_conio->SetVol(pow(10.0, p_val / 20.0));
+	}
+
+	static void g_enum_devices(output_device_enum_callback & p_callback) {
+		p_callback.on_device(myoutputclass_GUID, OUTPUT_NAME, sizeof(OUTPUT_NAME));
+	}
+
+	static GUID g_get_guid() {
+		return myoutputclass_GUID;
+	}
+
+	static const char * g_get_name() {
+		return OUTPUT_NAME;
+	}
+
+	static void g_advanced_settings_popup(HWND p_parent, POINT p_menupoint) {
+	}
+
+	static bool g_advanced_settings_query() {
+		return false;
+	}
+
+	static bool g_needs_bitdepth_config() {
+		return false;
+	}
+	static bool g_needs_dither_config() {
+		return false;
+	}
+	static bool g_needs_device_list_prefixes() {
+		return false;
+	}
+	
+};
+
+static output_factory_t<myoutputclass> g_myoutputclass;
