@@ -5,15 +5,12 @@
 #include <vector>
 #include "io.h"
 
-CConIo::CConIo(LPWSTR child, int samplerate, int channels, bool showconsole) : isRunning(true), samplerate(samplerate), channels(channels), showconsole(showconsole), curvol(1)
+CConIo::CConIo(LPWSTR child, int samplerate, int channels, bool showconsole):
+	samplerate(samplerate), channels(channels), showconsole(showconsole), curvol(1)
 {
 	lstrcpy(cmdline, child);
-}
 
-void CConIo::threadProc(void)
-{
 	HANDLE child_input_read;
-	HANDLE child_input_write;
 
 	STARTUPINFO startup_info;
 	SECURITY_ATTRIBUTES security_attributes;
@@ -36,48 +33,14 @@ void CConIo::threadProc(void)
 	startup_info.wShowWindow = showconsole ? SW_SHOWDEFAULT : SW_HIDE;
 #endif
 	try {
-	WIN32_OP(CreateProcess(NULL, cmdline, NULL, NULL, TRUE, 0, NULL, NULL, &startup_info, &process_info));
+		WIN32_OP(CreateProcess(NULL, cmdline, NULL, NULL, TRUE, 0, NULL, NULL, &startup_info, &process_info));
 
-	CloseHandle(child_input_read);
+		CloseHandle(child_input_read);
 
+		file_stream = file_win32_wrapper_t<false, true>::g_create_from_handle(child_input_write);
 
-	service_ptr_t<file> file_stream = file_win32_wrapper_t<false, true>::g_create_from_handle(child_input_write);
+		_WriteWavHeader(file_stream);
 
-	_WriteWavHeader(file_stream);
-	mem_block_container_impl out;
-
-	while (isRunning) {
-		isRunning = file_stream.is_valid() && !abrt.is_aborting();
-
-		rwl.enterRead();
-		if (m_queue.size()) {
-			audio_chunk_impl v = m_queue.front();
-			rwl.leaveRead();
-
-			out.set_size(v.get_used_size());
-
-			v.toFixedPoint(out, 16, 16, true, curvol);
-
-			try {
-				file_stream->write((char*)out.get_ptr(), out.get_size(), abrt);
-			}
-			catch (...) {
-				isRunning = false;
-			}
-			m_queue.pop();
-		}
-		else {
-			rwl.leaveRead();
-			//was at first used to reduce thread CPU usage: WaitForSingleObject(winThreadHandle(), 100);
-		}
-	}
-	file_stream.release();
-	if (WaitForSingleObject(process_info.hProcess, 5000) == WAIT_TIMEOUT)
-		TerminateProcess(process_info.hProcess, 1);
-
-	}
-	catch (const exception_io e) {
-		console::printf(COMPONENT_NAME " Write failed: %s", e.what());
 	}
 	catch (const exception_win32 e) {
 		console::printf(COMPONENT_NAME " Unable to create process: %s", e.what());
@@ -86,26 +49,31 @@ void CConIo::threadProc(void)
 
 bool CConIo::isReady()
 {
-	return m_queue.size()==0;
+	return file_stream->is_eof(abrt);
 }
 
 void CConIo::Flush()
 {
-	m_queue.empty();
+	FlushFileBuffers(child_input_write);
 }
 
 void CConIo::Write(const audio_chunk &d)
 {
-	rwl.enterWrite();
-	m_queue.push(d);
-	rwl.leaveWrite();
+	mem_block_container_impl out;
+
+	out.set_size(d.get_used_size());
+	d.toFixedPoint(out, 16, 16, true, curvol);
+
+
+	file_stream->write((char*)out.get_ptr(), out.get_size(), abrt);
 }
 
 CConIo::~CConIo()
 {
-	abrt.abort();
-
-	waitTillDone();
+	file_stream.release();
+	if (WaitForSingleObject(process_info.hProcess, 5000) == WAIT_TIMEOUT) {
+		TerminateProcess(process_info.hProcess, 1);
+	}
 }
 
 

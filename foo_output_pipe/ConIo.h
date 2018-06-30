@@ -1,16 +1,13 @@
 #pragma once
 #include <queue>
 
-class CConIo : public pfc::thread
+class CConIo
 {
 private:
 	WCHAR cmdline[MAX_PATH];
 	PROCESS_INFORMATION process_info;
-	volatile bool isRunning;
-	std::queue< audio_chunk_fast_impl > m_queue;
 	const int samplerate;
 	const int channels;
-	pfc::readWriteLock rwl;
 	void _WriteWavHeader(service_ptr_t<file> file_stream);
 
 	typedef struct
@@ -32,16 +29,19 @@ private:
 	abort_callback_impl abrt;
 	const bool showconsole;
 	double curvol;
+	HANDLE child_input_write;
+	service_ptr_t<file> file_stream;
 public:
 	CConIo(LPWSTR child, int samplerate, int channels, bool showconsole);
-	void threadProc(void);
 	void Write(const audio_chunk &d);
 	bool isReady();
 	void Flush();
 	void SetVol(double p_vol) {
 		curvol = p_vol;
 	}
-	bool GetRunning() { return isRunning; }
+	void Abort() {
+		abrt.abort();
+	}
 	~CConIo();
 };
 

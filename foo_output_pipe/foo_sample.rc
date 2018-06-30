@@ -50,14 +50,17 @@ END
 // Dialog
 //
 
-IDD_PREFS DIALOGEX 0, 0, 284, 83
+IDD_PREFS DIALOGEX 0, 0, 300, 124
 STYLE DS_SETFONT | DS_FIXEDSYS | DS_CONTROL | WS_CHILD | WS_SYSMENU
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    CONTROL         "Enable",IDC_ENABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,7,37,10
-	CONTROL         "Show console window", IDC_SHOWCONSOLE, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 7, 20, 85, 10
-	LTEXT           " Path to pipe program:", IDC_STATIC, 7, 44, 270, 8
-	EDITTEXT        IDC_CMDLINE, 7, 55, 270, 14, ES_AUTOHSCROLL
+    CONTROL         "Capture playback stream",IDC_ENABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,7,96,10
+    CONTROL         "Show console window",IDC_SHOWCONSOLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,106,85,10
+    LTEXT           "Path to pipe program:",IDC_STATIC,7,61,286,8
+    EDITTEXT        IDC_CMDLINE,7,73,265,14,ES_AUTOHSCROLL
+    LTEXT           "Intended to be used when you don't use foo_output_pipe as output plugin. The same executable below will be executed for both instances.",IDC_STATIC,18,19,245,23
+    PUSHBUTTON      "...",IDC_BROWSEBTN,273,73,20,14
+    LTEXT           "Trailing command line arguments are accepted",IDC_STATIC,7,89,148,8
 END
 
 
@@ -72,23 +75,24 @@ BEGIN
     IDD_PREFS, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 277
+        RIGHTMARGIN, 293
         TOPMARGIN, 7
-        BOTTOMMARGIN, 76
+        BOTTOMMARGIN, 116
     END
 END
 #endif    // APSTUDIO_INVOKED
 
-#endif    // English (United States) resources
-/////////////////////////////////////////////////////////////////////////////
-
 
 /////////////////////////////////////////////////////////////////////////////
-// Norwegian, Bokmål (Norway) resources
+//
+// AFX_DIALOG_LAYOUT
+//
 
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NOR)
-LANGUAGE LANG_NORWEGIAN, SUBLANG_NORWEGIAN_BOKMAL
-#pragma code_page(1252)
+IDD_PREFS AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -128,7 +132,7 @@ BEGIN
     END
 END
 
-#endif    // Norwegian, Bokmål (Norway) resources
+#endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

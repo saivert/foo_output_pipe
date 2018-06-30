@@ -16,8 +16,9 @@ COMPONENT_NAME,
 VALIDATE_COMPONENT_FILENAME("foo_output_pipe.dll");
 
 CConIo * g_conio=nullptr;
+CConIo * g_coniopbstream = nullptr;
 
-extern cfg_int cfg_enable;
+extern cfg_int cfg_captureplaybackstream;
 extern cfg_int cfg_showconsolewindow;
 extern cfg_string cfg_cmdline;
 
@@ -26,7 +27,7 @@ public:
 	
 	void on_chunk(const audio_chunk &d) {
 
-		if (!g_conio) {
+		if (!g_coniopbstream) {
 			pfc::string8 s, b;
 			WCHAR buf[MAX_PATH];
 			s = cfg_cmdline;
@@ -36,17 +37,17 @@ public:
 
 			console::printf(COMPONENT_NAME " Executing: %s", s.toString());
 			pfc::stringcvt::convert_utf8_to_wide(buf, sizeof(buf), s.toString(), s.get_length());
-			g_conio = new CConIo(buf, d.get_sample_rate(), d.get_channels(), cfg_showconsolewindow == 1);
+			g_coniopbstream = new CConIo(buf, d.get_sample_rate(), d.get_channels(), cfg_showconsolewindow == 1);
 
-			g_conio->start();
+			g_coniopbstream->Write(d);
 		}
 		else {
-			g_conio->Write(d);
+			g_coniopbstream->Write(d);
 
-			if (!g_conio->GetRunning()) {
+			if (!g_coniopbstream->isReady()) {
 				console::printf(COMPONENT_NAME "Write aborted. Shutting down.");
-				delete g_conio;
-				g_conio = nullptr;
+				delete g_coniopbstream;
+				g_coniopbstream = nullptr;
 				static_api_ptr_t<playback_stream_capture> api;
 				api->remove_callback(this);
 			}
@@ -69,13 +70,13 @@ public:
 
 	virtual void on_playback_pause(bool p_state){
 		static_api_ptr_t<playback_stream_capture> api;
-		if (!cfg_enable) return;
+		if (!cfg_captureplaybackstream) return;
 		if (!p_state) {
 			api->add_callback(&g_mycapturestream);
 		} else {
-			if (g_conio) {
-				delete g_conio;
-				g_conio = nullptr;
+			if (g_coniopbstream) {
+				delete g_coniopbstream;
+				g_coniopbstream = nullptr;
 			}
 			api->remove_callback(&g_mycapturestream);
 		}
@@ -123,9 +124,8 @@ public:
 
 			console::printf(COMPONENT_NAME " Executing: %s", s.toString());
 			pfc::stringcvt::convert_utf8_to_wide(buf, sizeof(buf), s.toString(), s.get_length());
-			g_conio = new CConIo(buf, 44100, 2, true);
+			g_conio = new CConIo(buf, 44100, 2, cfg_showconsolewindow == 1);
 
-			g_conio->start();
 		}
 	}
 
@@ -151,10 +151,6 @@ public:
 	}
 	//! Pauses/unpauses playback.
 	void pause(bool p_state) {
-		if (p_state) {
-		}
-		else {
-		}
 	}
 	//! Flushes queued audio data. Called after seeking.
 	void flush() {
@@ -162,6 +158,7 @@ public:
 	}
 	//! Forces playback of queued data. Called when there's no more data to send, to prevent infinite waiting if output implementation starts actually playing after amount of data in internal buffer reaches some level.
 	void force_play() {
+		g_conio->Abort();
 	}
 
 	//! Sets playback volume.

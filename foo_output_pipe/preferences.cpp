@@ -16,16 +16,16 @@ static const GUID guid_cfg_showconsolewindow =
 { 0xfc0d18c5, 0x4ab, 0x4353, { 0x84, 0x1d, 0x97, 0x86, 0x4e, 0x64, 0xd5, 0xd4 } };
 
 // {4FD293C4-9720-400F-A8B8-C3754C64646B}
-static const GUID guid_cfg_enable =
+static const GUID guid_cfg_captureplaybackstream =
 { 0x4fd293c4, 0x9720, 0x400f, { 0xa8, 0xb8, 0xc3, 0x75, 0x4c, 0x64, 0x64, 0x6b } };
 
 enum {
 	default_cfg_showconsole = 0,
-	default_cfg_enable = 1,
+	default_cfg_captureplaybackstream = 0,
 };
-static auto default_cfg_cmdline = "d:\\ffmpeg\\bin\\ffmpeg.exe -f wav -i - -y d:\\out.mp3";
+static auto default_cfg_cmdline = "c:\\ffmpeg\\ffmpeg.exe -f wav -i - -y c:\\ffmpeg\\out.mp3";
 
-cfg_int cfg_enable(guid_cfg_enable, 1);
+cfg_int cfg_captureplaybackstream(guid_cfg_captureplaybackstream, 1);
 cfg_int cfg_showconsolewindow(guid_cfg_showconsolewindow, 0);
 cfg_string cfg_cmdline(guid_cfg_cmdline, default_cfg_cmdline);
 
@@ -51,18 +51,21 @@ public:
 		COMMAND_HANDLER_EX(IDC_ENABLE, BN_CLICKED, OnEditChange)
 		COMMAND_HANDLER_EX(IDC_SHOWCONSOLE, BN_CLICKED, OnEditChange)
 		COMMAND_HANDLER_EX(IDC_CMDLINE, EN_CHANGE, OnEditChange)
+		COMMAND_HANDLER_EX(IDC_BROWSEBTN, BN_CLICKED, OnBrowseBtnClick)
 	END_MSG_MAP()
 private:
 	BOOL OnInitDialog(CWindow, LPARAM);
 	void OnEditChange(UINT, int, CWindow);
+	void OnBrowseBtnClick(UINT, int, CWindow);
 	bool HasChanged();
 	void OnChanged();
 
 	const preferences_page_callback::ptr m_callback;
+public:
 };
 
 BOOL CMyPreferences::OnInitDialog(CWindow, LPARAM) {
-	CheckDlgButton(IDC_ENABLE, cfg_enable);
+	CheckDlgButton(IDC_ENABLE, cfg_captureplaybackstream);
 	CheckDlgButton(IDC_SHOWCONSOLE, cfg_showconsolewindow);
 	uSetDlgItemText(m_hWnd, IDC_CMDLINE, cfg_cmdline);
 	return FALSE;
@@ -73,6 +76,14 @@ void CMyPreferences::OnEditChange(UINT, int, CWindow) {
 	OnChanged();
 }
 
+void CMyPreferences::OnBrowseBtnClick(UINT, int, CWindow) {
+	pfc::string8 fn;
+	uGetDlgItemText(m_hWnd, IDC_CMDLINE, fn);
+	if (uGetOpenFileName(m_hWnd, "Executables|*.exe", 1, NULL, "Select executable", NULL, fn, false)) {
+		uSetDlgItemText(m_hWnd, IDC_CMDLINE, fn);
+	}
+}
+
 t_uint32 CMyPreferences::get_state() {
 	t_uint32 state = preferences_state::resettable;
 	if (HasChanged()) state |= preferences_state::changed;
@@ -80,14 +91,14 @@ t_uint32 CMyPreferences::get_state() {
 }
 
 void CMyPreferences::reset() {
-	CheckDlgButton(IDC_ENABLE, default_cfg_enable);
+	CheckDlgButton(IDC_ENABLE, default_cfg_captureplaybackstream);
 	CheckDlgButton(IDC_SHOWCONSOLE, default_cfg_showconsole);
 	uSetDlgItemText(m_hWnd, IDC_CMDLINE, default_cfg_cmdline);
 	OnChanged();
 }
 
 void CMyPreferences::apply() {
-	cfg_enable = IsDlgButtonChecked(IDC_ENABLE);
+	cfg_captureplaybackstream = IsDlgButtonChecked(IDC_ENABLE);
 	cfg_showconsolewindow = IsDlgButtonChecked(IDC_SHOWCONSOLE);
 	uGetDlgItemText(m_hWnd, IDC_CMDLINE, cfg_cmdline);
 	OnChanged(); //our dialog content has not changed but the flags have - our currently shown values now match the settings so the apply button can be disabled
@@ -95,7 +106,7 @@ void CMyPreferences::apply() {
 
 bool CMyPreferences::HasChanged() {
 	//returns whether our dialog content is different from the current configuration (whether the apply button should be enabled or not)
-	return IsDlgButtonChecked(IDC_ENABLE) != cfg_enable
+	return IsDlgButtonChecked(IDC_ENABLE) != cfg_captureplaybackstream
 		|| IsDlgButtonChecked(IDC_SHOWCONSOLE) != cfg_showconsolewindow
 		|| uGetDlgItemText(m_hWnd, IDC_CMDLINE) != cfg_cmdline;
 }
@@ -116,7 +127,7 @@ public:
 
 		return guid;
 	}
-	GUID get_parent_guid() { return guid_tools; }
+	GUID get_parent_guid() { return guid_playback; }
 };
 
 static preferences_page_factory_t<preferences_page_myimpl> g_preferences_page_myimpl_factory;
