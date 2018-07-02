@@ -8,9 +8,9 @@ COMPONENT_NAME,
 "foo_output_pipe\n"
 "\n"
 "pipes audio via a console app\n"
-"Fork me @ https://github.com/saivert/foo_output_pipe\n"
+"https://github.com/saivert/foo_output_pipe\n"
 "\n"
-"Copyright (c) 2016 Nicolai Syvertsen\n"
+"Copyright (c) 2016-2018 Nicolai Syvertsen\n"
 );
 
 VALIDATE_COMPONENT_FILENAME("foo_output_pipe.dll");
