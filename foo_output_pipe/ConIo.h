@@ -31,6 +31,7 @@ private:
 	double curvol;
 	HANDLE child_input_write;
 	service_ptr_t<file> file_stream;
+	bool ready;
 public:
 	CConIo(LPWSTR child, int samplerate, int channels, bool showconsole);
 	void Write(const audio_chunk &d);

@@ -23,10 +23,22 @@ extern cfg_int cfg_showconsolewindow;
 extern cfg_string cfg_cmdline;
 
 class mycapturestream : public playback_stream_capture_callback, public service_base {
+private:
+	unsigned int srate, channels;
 public:
 	
 	void on_chunk(const audio_chunk &d) {
-
+		unsigned int new_srate = d.get_srate();
+		unsigned int new_channels = d.get_channels();
+		if (srate != new_srate || channels != new_channels) {
+			srate = new_srate;
+			channels = new_channels;
+			if (g_coniopbstream) {
+				g_coniopbstream->Abort();
+				delete g_coniopbstream;
+				g_coniopbstream = nullptr;
+			}
+		}
 		if (!g_coniopbstream) {
 			pfc::string8 s, b;
 			WCHAR buf[MAX_PATH];
@@ -37,13 +49,11 @@ public:
 
 			console::printf(COMPONENT_NAME " Executing: %s", s.toString());
 			pfc::stringcvt::convert_utf8_to_wide(buf, sizeof(buf), s.toString(), s.get_length());
-			g_coniopbstream = new CConIo(buf, d.get_sample_rate(), d.get_channels(), cfg_showconsolewindow == 1);
+			g_coniopbstream = new CConIo(buf, srate, channels, cfg_showconsolewindow == 1);
 
-			g_coniopbstream->Write(d);
 		}
-		else {
+		if (g_coniopbstream) {
 			g_coniopbstream->Write(d);
-
 			if (!g_coniopbstream->isReady()) {
 				console::printf(COMPONENT_NAME "Write aborted. Shutting down.");
 				delete g_coniopbstream;
@@ -111,22 +121,12 @@ private:
 	double buffer_length;
 	t_uint32 bitdepth;
 	double vol;
+	unsigned int srate, channels;
 public:
 
-	myoutputclass(const GUID & p_device, double p_buffer_length, bool p_dither, t_uint32 p_bitdepth) : buffer_length(p_buffer_length), bitdepth(p_bitdepth) {
-		if (!g_conio) {
-			pfc::string8 s, b;
-			WCHAR buf[MAX_PATH];
-			s = cfg_cmdline;
+	myoutputclass(const GUID & p_device, double p_buffer_length, bool p_dither, t_uint32 p_bitdepth) :
+		buffer_length(p_buffer_length), bitdepth(p_bitdepth), srate(0), channels(0) {
 
-			//s.replace_string("%samplerate%", pfc::format_int(p_chunk.get_sample_rate()));
-			//s.replace_string("%channels%", pfc::format_int(p_chunk.get_channels()));
-
-			console::printf(COMPONENT_NAME " Executing: %s", s.toString());
-			pfc::stringcvt::convert_utf8_to_wide(buf, sizeof(buf), s.toString(), s.get_length());
-			g_conio = new CConIo(buf, 44100, 2, cfg_showconsolewindow == 1);
-
-		}
 	}
 
 	~myoutputclass() {
@@ -142,12 +142,41 @@ public:
 	}
 	//! Sends new samples to the device. Allowed to be called only when update() indicates that the device is ready.
 	void process_samples(const audio_chunk & p_chunk) {
+		unsigned int new_srate = p_chunk.get_srate();
+		unsigned int new_channels = p_chunk.get_channels();
+		if (srate != new_srate || channels != new_channels) {
+			srate = new_srate;
+			channels = new_channels;
+			if (g_conio) {
+				g_conio->Abort();
+				delete g_conio;
+				g_conio = nullptr;
+			}
+		}
+		if (!g_conio) {
+			pfc::string8 s, b;
+			WCHAR buf[MAX_PATH];
+			s = cfg_cmdline;
+
+			s.replace_string("%samplerate%", pfc::format_int(p_chunk.get_sample_rate()));
+			s.replace_string("%channels%", pfc::format_int(p_chunk.get_channels()));
+
+			console::printf(COMPONENT_NAME " Executing: %s", s.toString());
+			pfc::stringcvt::convert_utf8_to_wide(buf, sizeof(buf), s.toString(), s.get_length());
+			g_conio = new CConIo(buf, srate, channels, cfg_showconsolewindow == 1);
+
+		}
 		if (g_conio) g_conio->Write(p_chunk);
 	}
 	//! Updates playback; queries whether the device is ready to receive new data.
 	//! @param p_ready On success, receives value indicating whether the device is ready for next process_samples() call.
 	void update(bool & p_ready) {
-		p_ready = g_conio && g_conio->isReady();
+		if (g_conio) {
+			p_ready = g_conio->isReady();
+		}
+		else {
+			p_ready = true;
+		}
 	}
 	//! Pauses/unpauses playback.
 	void pause(bool p_state) {

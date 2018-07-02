@@ -6,7 +6,7 @@
 #include "io.h"
 
 CConIo::CConIo(LPWSTR child, int samplerate, int channels, bool showconsole):
-	samplerate(samplerate), channels(channels), showconsole(showconsole), curvol(1)
+	samplerate(samplerate), channels(channels), showconsole(showconsole), curvol(1), ready(true)
 {
 	lstrcpy(cmdline, child);
 
@@ -49,7 +49,8 @@ CConIo::CConIo(LPWSTR child, int samplerate, int channels, bool showconsole):
 
 bool CConIo::isReady()
 {
-	return file_stream->is_eof(abrt);
+	//return file_stream->is_eof(abrt);
+	return ready;
 }
 
 void CConIo::Flush()
@@ -60,12 +61,14 @@ void CConIo::Flush()
 void CConIo::Write(const audio_chunk &d)
 {
 	mem_block_container_impl out;
+	ready = false;
 
 	out.set_size(d.get_used_size());
 	d.toFixedPoint(out, 16, 16, true, curvol);
 
 
 	file_stream->write((char*)out.get_ptr(), out.get_size(), abrt);
+	ready = true;
 }
 
 CConIo::~CConIo()
